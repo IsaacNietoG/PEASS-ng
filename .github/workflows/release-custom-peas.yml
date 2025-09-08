@@ -1,43 +1,65 @@
-name: Build & Release linpeas
+name: Build & Release linpeas CTF
 
 on:
   push:
     tags:
-      - "*"  # Se ejecuta en cada tag creado
+      - "*"   # Ejecuta en cada tag (p.ej. v1.2.3)
+
+permissions:
+  contents: write  # necesario para crear releases y subir assets
 
 jobs:
-  build-and-release:
+  Build_and_release_linpeas_ctf:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout del repo
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      # Checkout (como en el original)
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
 
-      # 2. Ejecutar el script de build
-      - name: Build linpeas custom
+      # (Opcional) muestra versión de Go si tu script la necesita; si no, puedes borrar esto
+      # - uses: actions/setup-go@v5
+      #   with:
+      #     go-version: 'stable'
+
+      # Build: corre tu script desde el repo
+      - name: Build linpeas CTF
         run: |
           chmod +x linpeas/buildCustom.sh
           ./linpeas/buildCustom.sh
 
-      # 3. Verificar que el archivo existe
+      # Verifica que el build generó el archivo esperado
       - name: Check built file
         run: |
           if [ ! -f /tmp/linpeas_ctf.sh ]; then
-            echo "❌ El archivo /tmp/linpeas_ctf.sh no existe"
+            echo "❌ No se generó /tmp/linpeas_ctf.sh"
             exit 1
           fi
+          file /tmp/linpeas_ctf.sh
+          ls -lh /tmp/linpeas_ctf.sh
 
-      # 4. Crear o actualizar la release
-      - name: Create GitHub Release
-        id: create_release
-        uses: softprops/action-gh-release@v1
+      # (Opcional) calcula checksum y lo guarda para el cuerpo de la release
+      - name: Compute checksum
+        id: sums
+        run: |
+          sha256sum /tmp/linpeas_ctf.sh | tee sha256.txt
+          echo "sha256=$(cut -d' ' -f1 sha256.txt)" >> $GITHUB_OUTPUT
+
+      # Crea/actualiza la release del tag y sube el asset
+      - name: Create/Update Release and Upload Asset
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: "Release ${{ github.ref_name }}"
-          body: "Release automática."
+          body: |
+            Release automática generada por GitHub Actions.
+
+            **SHA256**: ${{ steps.sums.outputs.sha256 }}
           draft: false
           prerelease: false
+          make_latest: true
+          fail_on_unmatched_files: true
           files: |
             /tmp/linpeas_ctf.sh
         env:
