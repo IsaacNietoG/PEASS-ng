@@ -26,6 +26,7 @@ jobs:
       # Build: corre tu script desde el repo
       - name: Build linpeas CTF
         run: |
+          python3 -m pip install PyYAML
           chmod +x linPEAS/buildCustom.sh
           ./linPEAS/buildCustom.sh
 
