@@ -3,7 +3,7 @@ name: Build & Release linpeas CTF
 on:
   push:
     tags:
-      - "*"   # Ejecuta en cada tag (p.ej. v1.2.3)
+      - "*"  # Ejecuta en cada tag
 
 permissions:
   contents: write  # necesario para crear releases y subir assets
@@ -13,41 +13,41 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout (como en el original)
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
 
-      # (Opcional) muestra versión de Go si tu script la necesita; si no, puedes borrar esto
-      # - uses: actions/setup-go@v5
-      #   with:
-      #     go-version: 'stable'
-
-      # Build: corre tu script desde el repo
-      - name: Build linpeas CTF
+      # Dependencias mínimas (como en el original)
+      - name: Python deps
         run: |
+          python3 -m pip install --upgrade pip
           python3 -m pip install PyYAML
-          chmod +x linPEAS/buildCustom.sh
-          ./linPEAS/buildCustom.sh
 
-      # Verifica que el build generó el archivo esperado
+      # Ejecuta el build desde linpeas/ y expone PYTHONPATH para que 'builder' se resuelva
+      - name: Build linpeas CTF
+        working-directory: linPEAS
+        env:
+          PYTHONPATH: ${{ github.workspace }}/linPEAS
+        run: |
+          chmod +x buildCustom.sh
+          ./buildCustom.sh
+
       - name: Check built file
         run: |
           if [ ! -f /tmp/linpeas_ctf.sh ]; then
-            echo "❌ No se generó /tmp/linpeas_ctf.sh"
+            echo "❌ No se generó /tmp/linpeas_ctf.sh (revisa que buildCustom.sh lo cree)"
             exit 1
           fi
           file /tmp/linpeas_ctf.sh
           ls -lh /tmp/linpeas_ctf.sh
 
-      # (Opcional) calcula checksum y lo guarda para el cuerpo de la release
       - name: Compute checksum
         id: sums
         run: |
           sha256sum /tmp/linpeas_ctf.sh | tee sha256.txt
           echo "sha256=$(cut -d' ' -f1 sha256.txt)" >> $GITHUB_OUTPUT
 
-      # Crea/actualiza la release del tag y sube el asset
       - name: Create/Update Release and Upload Asset
         uses: softprops/action-gh-release@v2
         with:
@@ -60,6 +60,7 @@ jobs:
           draft: false
           prerelease: false
           make_latest: true
+          overwrite: true                 # sobreescribe asset si ya existía
           fail_on_unmatched_files: true
           files: |
             /tmp/linpeas_ctf.sh
