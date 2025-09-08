@@ -26,8 +26,8 @@ jobs:
       # Build: corre tu script desde el repo
       - name: Build linpeas CTF
         run: |
-          chmod +x linpeas/buildCustom.sh
-          ./linpeas/buildCustom.sh
+          chmod +x linPEAS/buildCustom.sh
+          ./linPEAS/buildCustom.sh
 
       # Verifica que el build generó el archivo esperado
       - name: Check built file
